@@ -183,7 +183,8 @@
                             id: {{ post.id }},
                             lat: {{ post.latitude }},
                             lng: {{ post.longitude }},
-                            title: "{{ post.title|escapejs }}"
+                            title: "{{ post.title|escapejs }}",
+                            timestamp: "{{ post.timestamp }}"
                         }{% if not forloop.last %},{% endif %}
                     {% endfor %}
                 ];
@@ -218,8 +219,8 @@
 
                 // Draw the journey path if multiple points exist
                 if (blogPostsData.length > 1) {
-                    // Sort by ID (assuming newer posts have higher IDs)
-                    blogPostsData.sort((a, b) => a.id - b.id);
+                    // Sort chronologically using the timestamp provided by the backend
+                    blogPostsData.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
                     
                     // Create an array of lat/lng points for the path
                     const pathPoints = blogPostsData.map(post => [post.lat, post.lng]);

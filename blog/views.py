@@ -30,12 +30,19 @@ class JourneyDetailView(ListView):
         
         # Get all blog posts with location data for this journey
         posts_with_location = []
-        for post in self.get_queryset().filter(latitude__isnull=False, longitude__isnull=False):
+        # Ensure the posts are ordered chronologically so the map trail renders correctly
+        posts_queryset = self.get_queryset().filter(
+            latitude__isnull=False,
+            longitude__isnull=False
+        ).order_by('timestamp')
+
+        for post in posts_queryset:
             posts_with_location.append({
                 'id': post.id,
                 'title': post.title,
                 'latitude': post.latitude,
-                'longitude': post.longitude
+                'longitude': post.longitude,
+                'timestamp': post.timestamp.isoformat()
             })
         context['blog_posts_with_location'] = posts_with_location
         return context
@@ -123,11 +130,18 @@ def post_comment(request, journey_slug, pk):
 def blog_locations(request, journey_slug):
     journey = get_object_or_404(Journey, slug=journey_slug)
     posts_with_location = []
-    for post in BlogPost.objects.filter(journey=journey, latitude__isnull=False, longitude__isnull=False):
+    posts_queryset = BlogPost.objects.filter(
+        journey=journey,
+        latitude__isnull=False,
+        longitude__isnull=False
+    ).order_by('timestamp')
+
+    for post in posts_queryset:
         posts_with_location.append({
             'id': post.id,
             'title': post.title,
             'latitude': post.latitude,
-            'longitude': post.longitude
+            'longitude': post.longitude,
+            'timestamp': post.timestamp.isoformat()
         })
     return JsonResponse(posts_with_location, safe=False)
