@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error("Longitude field not found");
             return;
         }
-        
+
         // Create the button element
         var button = document.createElement('button');
         button.type = 'button';
@@ -54,17 +54,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 longitudeParent.parentNode.insertBefore(container, longitudeParent.nextSibling);
             }
         }
-        
+
         // Add click event listener
         button.addEventListener('click', getLatestLocation);
+
+        // Wire up helpers once the UI is in place
+        setupCoordinatePasteHandler();
     }
     
     // Function to get the latest location
     function getLatestLocation() {
         var button = document.getElementById('get-location-button');
-        var statusSpan = document.getElementById('location-status');
         var latitudeField = document.getElementById('id_latitude');
         var longitudeField = document.getElementById('id_longitude');
+        var journeyField = document.getElementById('id_journey');
+        var statusSpan = document.getElementById('location-status');
         
         if (!latitudeField || !longitudeField) {
             console.error('Could not find latitude or longitude fields');
@@ -87,10 +91,16 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // Create the URL
-        var adminUrl = window.location.pathname.includes('/admin/') ? 
-            window.location.pathname.split('/admin/')[0] + '/admin/' : 
+        var adminUrl = window.location.pathname.includes('/admin/') ?
+            window.location.pathname.split('/admin/')[0] + '/admin/' :
             '/admin/';
+
         var apiUrl = adminUrl + 'blog/blogpost/get-latest-location/';
+        if (journeyField && journeyField.value) {
+            var params = new URLSearchParams();
+            params.append('journey_id', journeyField.value);
+            apiUrl += '?' + params.toString();
+        }
         
         // Make the request
         var xhr = new XMLHttpRequest();
@@ -165,7 +175,69 @@ document.addEventListener('DOMContentLoaded', function() {
         
         xhr.send();
     }
-    
+
+    function setupCoordinatePasteHandler() {
+        var latitudeField = document.getElementById('id_latitude');
+        var longitudeField = document.getElementById('id_longitude');
+
+        if (!latitudeField || !longitudeField) {
+            return;
+        }
+
+        function updateStatus(message, color) {
+            var statusSpan = document.getElementById('location-status');
+            if (!statusSpan) {
+                return;
+            }
+            statusSpan.textContent = message;
+            statusSpan.style.color = color;
+        }
+
+        function extractCoordinates(text) {
+            if (!text) {
+                return null;
+            }
+
+            // Remove parentheses and other non-numeric separators while keeping delimiters
+            var cleaned = text.replace(/[()]/g, ' ').trim();
+            var matches = cleaned.match(/-?\d+(?:\.\d+)?/g);
+
+            if (matches && matches.length >= 2) {
+                var lat = parseFloat(matches[0]);
+                var lng = parseFloat(matches[1]);
+
+                var isValidLatitude = !isNaN(lat) && lat >= -90 && lat <= 90;
+                var isValidLongitude = !isNaN(lng) && lng >= -180 && lng <= 180;
+
+                if (isValidLatitude && isValidLongitude) {
+                    return [lat, lng];
+                }
+            }
+
+            return null;
+        }
+
+        function handlePaste(event) {
+            var clipboardData = event.clipboardData || window.clipboardData;
+            if (!clipboardData) {
+                return;
+            }
+
+            var pastedText = clipboardData.getData('text');
+            var coordinates = extractCoordinates(pastedText);
+
+            if (coordinates) {
+                event.preventDefault();
+                latitudeField.value = coordinates[0];
+                longitudeField.value = coordinates[1];
+                updateStatus('Coordinates parsed from clipboard', 'green');
+            }
+        }
+
+        latitudeField.addEventListener('paste', handlePaste);
+        longitudeField.addEventListener('paste', handlePaste);
+    }
+
     // Initialize by adding the button
     addLocationButton();
 });
